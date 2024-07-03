@@ -17,11 +17,12 @@ Route::get('properties/latest',[PropertyController::class, 'latest']);
 Route::get('/properties/filter', [PropertyController::class, 'filter']);
 Route::get('/type/property', [PropertyController::class, 'getPropertyTypes']);
 Route::get('/properties/search', [PropertyController::class, 'search']);
+Route::get('/properties/featured', [PropertyController::class, 'featuredProperties']);
 
 Route::group(['middleware' => 'auth:sanctum'], function () {
     Route::get('properties', [PropertyController::class, 'index']);
     Route::post('properties', [PropertyController::class, 'store']);
     Route::get('properties/{id}', [PropertyController::class, 'show']);
-    Route::put('properties/{id}', [PropertyController::class, 'update']);
+    Route::post('properties/{id}', [PropertyController::class, 'update']);
     Route::delete('properties/{id}', [PropertyController::class, 'destroy']);
 });

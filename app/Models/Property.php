@@ -19,7 +19,8 @@ class Property extends Model
         'property_type_id',
         'num_bathrooms',
         'num_bedrooms',
-        'price'
+        'price',
+        'is_featured'
     ];
 
 

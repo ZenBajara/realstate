@@ -7,6 +7,32 @@
       <!-- Section 1 -->
       <Header />
 
+       <!-- Featured Properties Carousel -->
+     <!-- Featured Properties Carousel -->
+
+        <!-- Carousel -->
+        <div class="carousel w-full relative" ref="carouselContainer">
+  <div v-for="(property, index) in featuredProperties" :key="property.id" :id="'slide' + (index + 1)" class="carousel-item relative w-full">
+    <img v-if="property.images && property.images.length > 0" :src="property.images[0]?.image_url" :alt="property.images[0]?.title || 'Property Image'" class="w-full" />
+    <div v-else class="w-full h-full bg-gray-200 flex items-center justify-center">
+      <span class="text-gray-500">No Image Available</span>
+    </div>
+
+    <!-- Navigation Arrows -->
+    <div class="absolute left-5 right-5 top-1/2 flex -translate-y-1/2 transform justify-between">
+      <a :href="'#slide' + (index === 0 ? featuredProperties.length : index)" class="btn btn-circle">❮</a>
+      <a :href="'#slide' + ((index + 1) % featuredProperties.length + 1)" class="btn btn-circle">❯</a>
+    </div>
+
+    <!-- Property Name and Details -->
+    <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-60 text-white p-4">
+      <h3 class="text-2xl font-semibold">{{ property.name }}</h3>
+    </div>
+  </div>
+</div>
+
+
+
       <!-- Search Bar -->
       <section class="bg-gray-50 py-12">
         <div class="container px-4 mx-auto sm:px-6 lg:px-8">
@@ -132,10 +158,10 @@ import axios from 'axios';
 import Loader from './Loader.vue';
 import Header from '../frontpartials/Header.vue';
 
+
+// Data references
 const properties = ref([]);
-const paginatedProperties = computed(() => {
-  return properties.value.slice(0, page.value * itemsPerPage.value);
-});
+const featuredProperties = ref([]);
 const propertyTypes = ref([]);
 const isLoading = ref(true);
 const showFilterModal = ref(false);
@@ -148,7 +174,13 @@ const hasMore = ref(true);
 const page = ref(1);
 const itemsPerPage = ref(9);
 const searchQuery = ref('');
+const carouselContainer = ref(null);
+// Computed properties
+const paginatedProperties = computed(() => {
+  return properties.value.slice(0, page.value * itemsPerPage.value);
+});
 
+// Fetch functions
 async function fetchProperties() {
   try {
     const response = await axios.get('/api/properties/latest');
@@ -158,6 +190,15 @@ async function fetchProperties() {
     console.error(error);
   } finally {
     isLoading.value = false;
+  }
+}
+
+async function fetchFeaturedProperties() {
+  try {
+    const response = await axios.get('/api/properties/featured');
+    featuredProperties.value = response.data;
+  } catch (error) {
+    console.error(error);
   }
 }
 
@@ -224,9 +265,13 @@ function clearDateRange() {
   endDate.value = '';
   applyFilters();
 }
+// Auto-slide functionality
 
+// Lifecycle hooks
 onMounted(async () => {
   await fetchPropertyTypes();
   await fetchProperties();
+  await fetchFeaturedProperties();
 });
 </script>
+

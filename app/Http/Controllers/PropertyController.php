@@ -11,7 +11,7 @@ class PropertyController extends Controller
 {
     public function index()
     {
-        $properties = Property::with('images')->get();
+        $properties = Property::with('images')->latest()->get();
 
         // Format the response to include images with URLs
         $propertiesWithImages = $properties->map(function ($property) {
@@ -40,12 +40,56 @@ class PropertyController extends Controller
         return response()->json($propertiesWithImages);
     }
 
+    public function featuredProperties()
+    {
+        $properties = Property::where('is_featured', true)->get();
+        $propertiesWithImages = $properties->map(function ($property) {
+            $images = $property->images->map(function ($image) {
+                return [
+                    'image_url' => $image->url
+                ];
+            });
+            return [
+                'id' => $property->id,
+                'name' => $property->name,
+                'address' => $property->address,
+                'city' => $property->city,
+                'state' => $property->state,
+                'country' => $property->country,
+                'pincode' => $property->pincode,
+                'price' => $property->price,
+                'bedrooms' => $property->num_bedrooms,
+                'washrooms' => $property->num_bathrooms,
+                'type' => $property->propertyType->type,
+                'created_at' => $property->created_at,
+                'images' => $images
+            ];
+        });
+
+        return response()->json($propertiesWithImages);
+    }
+
     public function store(Request $request)
     {
-        $property = Property::create($request->all());
+        // Create the property with request data
+        $property = Property::create([
+            'name' => $request->input('name'),
+            'address' => $request->input('address'),
+            'city' => $request->input('city'),
+            'state' => $request->input('state'),
+            'country' => $request->input('country'),
+            'pincode' => $request->input('pincode'),
+            'property_type_id' => $request->input('property_type_id'),
+            'num_bathrooms' => $request->input('num_bathrooms'),
+            'num_bedrooms' => $request->input('num_bedrooms'),
+            'price' => $request->input('price'),
+            'is_featured' => $request->input('is_featured', false) // Default to false if not provided
+        ]);
 
+        // Handle image uploads
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $file) {
+                // Store each image and link to the property
                 $path = $file->store('property_images', 'public');
                 Images::create([
                     'property_id' => $property->id,
@@ -54,8 +98,15 @@ class PropertyController extends Controller
             }
         }
 
-        return response()->json($property->load('images'), 201);
+        // Load the images relationship and return the created property
+        $propertyWithImages = $property->load('images');
+
+        return response()->json([
+            'message' => 'Property created successfully',
+            'property' => $propertyWithImages
+        ], 201);
     }
+
 
     public function show($id)
 {
@@ -83,7 +134,8 @@ class PropertyController extends Controller
         'price' => $property->price,
         'bedrooms' => $property->num_bedrooms,
         'washrooms' => $property->num_bathrooms,
-        'type' => $property->propertyType->type,
+        'type' => $property->propertyType->id,
+        'is_featured' => $property->is_featured,
         'created_at' => $property->created_at,
         'images' => $images
     ];
@@ -134,13 +186,29 @@ public function search(Request $request)
 }
 public function update(Request $request, $id)
 {
+    // Find the property or fail if not found
     $property = Property::findOrFail($id);
 
-    // Update the property with the request data
-    $property->update($request->all());
+    // Update property attributes
+    $property->name = $request->input('name');
+    $property->address = $request->input('address');
+    $property->city = $request->input('city');
+    $property->state = $request->input('state');
+    $property->country = $request->input('country');
+    $property->pincode = $request->input('pincode');
+    $property->property_type_id = $request->input('property_type_id');
+    $property->num_bathrooms = $request->input('num_bathrooms');
+    $property->num_bedrooms = $request->input('num_bedrooms');
+    $property->is_featured = $request->input('is_featured');
+    $property->price = $request->input('price');
+    $property->save();
 
-    // Check if the request has any images and process them
+    // Handle image uploads
     if ($request->hasFile('images')) {
+        // Delete existing images
+        $property->images()->delete();
+
+        // Upload new images
         foreach ($request->file('images') as $file) {
             $path = $file->store('property_images', 'public');
             Images::create([
@@ -151,8 +219,14 @@ public function update(Request $request, $id)
     }
 
     // Load the images relationship and return the updated property
-    return response()->json($property->load('images'), 200);
+    $propertyWithImages = $property->load('images');
+
+    return response()->json([
+        'message' => 'Property updated successfully',
+        'property' => $propertyWithImages
+    ], 200);
 }
+
 
 
     public function destroy($id)
@@ -165,7 +239,7 @@ public function update(Request $request, $id)
 
     public function latest()
     {
-        $properties = Property::with('images')->orderBy('id','Desc')->get();
+        $properties = Property::with('images')->latest()->get();
 
         // Format the response to include images with URLs
         $propertiesWithImages = $properties->map(function ($property) {

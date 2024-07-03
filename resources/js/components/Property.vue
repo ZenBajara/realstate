@@ -189,20 +189,19 @@
     showModal.value = false;
   }
 
-  // Computed property to filter properties based on search term
   const filteredProperties = computed(() => {
     return properties.value.filter(property => {
       return property.name.toLowerCase().includes(searchTerm.value.toLowerCase());
     });
   });
 
-  // Computed property to paginate filtered properties
+
   const paginatedProperties = computed(() => {
     const startIndex = (currentPage.value - 1) * pageSize;
     return filteredProperties.value.slice(startIndex, startIndex + pageSize);
   });
 
-  // Computed property to calculate total pages
+
   const totalPages = computed(() => {
     return Math.ceil(filteredProperties.value.length / pageSize);
   });
@@ -213,6 +212,3 @@
 
   </script>
 
-  <style scoped>
-  /* Add any additional styles if needed */
-  </style>

@@ -4,6 +4,7 @@
         <div id="modal" class="w-10/12 h-5/6 rounded-xl bg-white p-4 overflow-auto">
           <form @submit.prevent="submitForm">
             <h2 class="text-2xl font-bold mb-4">{{ isEditMode ? 'Edit Property' : 'Add Property' }}</h2>
+            <!-- Other form fields -->
             <div class="flex flex-wrap -mx-3 mb-6">
               <div class="w-full md:w-1/2 px-3 mb-6 md:mb-0">
                 <label class="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2" for="name">
@@ -54,17 +55,15 @@
                     <i class="fas fa-plus"></i>
                   </button>
                 </label>
-                <select class="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white" id="type" v-model="property.type">
-                  <option v-for="type in propertyTypes" :key="type" :value="type">{{ type }}</option>
+                <select class="select select-bordered w-full bg-gray-200" v-model="property.property_type_id">
+                  <option v-for="type in propertyTypes" :key="type.id" :value="type.id">{{ type.type }}</option>
                 </select>
               </div>
-            </div>
-            <div class="flex flex-wrap -mx-3 mb-6">
               <div class="w-full md:w-1/4 px-3 mb-6 md:mb-0">
                 <label class="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2" for="num_bathrooms">
                   Number of Bathrooms
                 </label>
-                <input class="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white" id="num_bathrooms" type="number" v-model.number="property.num_bathrooms">
+                <input class="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white" id="num_bathrooms" type="number" v-model="property.num_bathrooms">
               </div>
               <div class="w-full md:w-1/4 px-3 mb-6 md:mb-0">
                 <label class="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2" for="num_bedrooms">
@@ -72,11 +71,25 @@
                 </label>
                 <input class="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white" id="num_bedrooms" type="number" v-model.number="property.num_bedrooms">
               </div>
+            </div>
+            <div class="flex flex-wrap -mx-3 mb-6">
               <div class="w-full md:w-1/4 px-3 mb-6 md:mb-0">
                 <label class="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2" for="price">
                   Price
                 </label>
-                <input class="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white" id="price" type="number"   step="0.01" v-model.number="property.price">
+                <input class="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 leading-tight focus:outline-none focus:bg-white" id="price" type="number" step="0.01" v-model.number="property.price">
+              </div>
+              <div class="w-full md:w-1/4 px-3 mb-6 md:mb-0 flex items-end">
+                <label class="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2" for="is_featured">
+                  Is Featured
+                </label>
+
+                <input
+                  id="is_featured"
+                  type="checkbox"
+                  class="toggle toggle-primary ml-2"
+                  v-model="property.is_featured"
+                />
               </div>
             </div>
             <div class="flex flex-wrap -mx-3 mb-6">
@@ -95,7 +108,7 @@
     </div>
   </template>
   <script setup>
-import { ref, defineEmits, defineExpose } from 'vue';
+import { ref, defineProps, defineEmits, onMounted } from 'vue';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 
@@ -106,14 +119,15 @@ const property = ref({
   state: '',
   country: '',
   pincode: '',
-  type: '',
+  property_type_id: '',
   num_bathrooms: 0,
   num_bedrooms: 0,
   price: 0,
-  images: []
+  images: [],
+  is_featured: false // Add this line
 });
 
-const propertyTypes = ref(['bunglow', 'apartment', 'villa', 'duplex']); // Initial types
+const propertyTypes = ref([]);
 const isEditMode = ref(false);
 const pointId = ref(null);
 const props = defineProps({
@@ -125,6 +139,15 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'propertyList']);
 
+async function fetchPropertyTypes() {
+  try {
+    const response = await axios.get('/api/type/property');
+    propertyTypes.value = response.data;
+  } catch (error) {
+    console.error('Error fetching property types:', error);
+  }
+}
+
 const loadPropertyData = async (id = null) => {
   if (id != null) {
     isEditMode.value = true;
@@ -135,14 +158,11 @@ const loadPropertyData = async (id = null) => {
 
 async function submitForm() {
   let url = '';
-  let method = '';
-  console.log(isEditMode.value);
+  let method = 'POST';
   if (isEditMode.value) {
     url = `/api/properties/${pointId.value}`;
-    method = 'PUT';
   } else {
     url = '/api/properties';
-    method = 'POST';
   }
 
   const formData = new FormData();
@@ -152,10 +172,12 @@ async function submitForm() {
   formData.append('state', property.value.state);
   formData.append('country', property.value.country);
   formData.append('pincode', property.value.pincode);
-  formData.append('type', property.value.type);
+  formData.append('property_type_id', property.value.property_type_id);
   formData.append('num_bathrooms', property.value.num_bathrooms);
   formData.append('num_bedrooms', property.value.num_bedrooms);
   formData.append('price', property.value.price);
+  formData.append('is_featured', property.value.is_featured ? '1' : '0'); // Add this line for is_featured
+
   for (const image of property.value.images) {
     formData.append('images[]', image);
   }
@@ -169,22 +191,11 @@ async function submitForm() {
         'Content-Type': 'multipart/form-data'
       }
     });
-    if(isEditMode.value)
-    {
-        Swal.fire({
-          icon: 'success',
-          title: 'Date updated Successfully...',
-          showConfirmButton: true
-        });
-
-    }else{
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Date Inserted Successfully...',
-          showConfirmButton: true
-        });
-    }
+    Swal.fire({
+      icon: 'success',
+      title: isEditMode.value ? 'Data updated Successfully...' : 'Data Inserted Successfully...',
+      showConfirmButton: true
+    });
     emit('propertyList');
     close();
   } catch (error) {
@@ -200,7 +211,19 @@ async function submitForm() {
 async function getDataForEdit() {
   try {
     const response = await axios.get(`/api/properties/${pointId.value}`);
-    Object.assign(property.value, response.data);
+    const data = response.data;
+    property.value.name = data.name;
+    property.value.address = data.address;
+    property.value.city = data.city;
+    property.value.state = data.state;
+    property.value.country = data.country;
+    property.value.pincode = data.pincode;
+    property.value.price = data.price;
+    property.value.num_bedrooms = data.bedrooms;
+    property.value.num_bathrooms = data.washrooms;
+    property.value.property_type_id = data.type; // Assuming 'type' should be mapped to 'property_type_id'
+    property.value.images = data.images.map(image => image.image_url); // Assuming images need URLs for display
+    property.value.is_featured = data.is_featured == 1 ? true : false; // Add this line for is_featured
   } catch (error) {
     Swal.fire({
       icon: 'error',
@@ -243,13 +266,18 @@ function resetValue() {
     state: '',
     country: '',
     pincode: '',
-    type: '',
+    property_type_id: '',
     num_bathrooms: 0,
     num_bedrooms: 0,
     price: 0,
-    images: []
+    images: [],
+    is_featured: false // Add this line
   };
 }
+
+onMounted(() => {
+  fetchPropertyTypes();
+});
 
 defineExpose({
   loadPropertyData
